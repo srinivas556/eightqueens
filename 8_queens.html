@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>8 Queens Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            position: relative; /* To position the streamers */
+        }
+
+        #game-board {
+            display: grid;
+            opacity: 1;
+            transition: opacity 1s ease-in-out;
+            gap: 0;
+            margin: auto;
+        }
+
+        .cell {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            cursor: pointer;
+            box-sizing: border-box;
+        }
+
+        .cell.black {
+            background-color: #4a4a4a;
+            color: white;
+        }
+
+        .cell.white {
+            background-color: #f5f5f5;
+            color: black;
+        }
+
+        .cell.cross {
+            background-color: red;
+            color: white;
+            pointer-events: none;
+        }
+
+        .cell.highlight {
+            background-color: #ffa500 !important;
+        }
+
+        #submit-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none;
+        }
+
+        #submit-button:disabled {
+            background-color: gray;
+            cursor: not-allowed;
+        }
+
+        #level-buttons {
+            display: none;
+        }
+
+        #hint-button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #6f42c1;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            display: none;
+        }
+
+        #hint-button:disabled {
+            background-color: gray;
+            cursor: not-allowed;
+        }
+
+        /* Party streamer animation */
+        .streamer {
+            position: absolute;
+            width: 5px;
+            height: 50px;
+            background-color: #ff0;
+            animation: fly 3s forwards;
+        }
+
+        .streamer:nth-child(even) {
+            background-color: #ff1493; /* Pink streamers */
+            animation-duration: 4s;
+        }
+
+        @keyframes fly {
+            0% {
+                transform: translateX(0) translateY(0) rotate(0deg);
+            }
+            100% {
+                transform: translateX(100vw) translateY(100vh) rotate(360deg);
+            }
+        }
+
+    </style>
+</head>
+<body>
+    <div>
+        <h1>8 Queens Puzzle Game</h1>
+        <div id="level-buttons">
+            <button onclick="startGame(4)">Level 1 (4x4)</button>
+            <button onclick="startGame(6)">Level 2 (6x6)</button>
+            <button onclick="startGame(8)">Level 3 (8x8)</button>
+        </div>
+        <div id="game-board"></div>
+        <button id="submit-button" onclick="submitGame()">Submit</button>
+        <button id="hint-button" onclick="provideHint()">Hint</button>
+    </div>
+
+    <script>
+        const gameBoard = document.getElementById('game-board');
+        const submitButton = document.getElementById('submit-button');
+        const hintButton = document.getElementById('hint-button');
+        const levelButtons = document.getElementById('level-buttons');
+        let boardSize;
+        let queenCount;
+        let queens = [];
+        let currentLevel = 1;
+        let hintCount = 0;
+        const maxHints = 3;
+
+        // Flag to track if streamers have been displayed
+        let streamersDisplayed = false;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            startGame(4);
+        });
+
+        function startGame(size) {
+            boardSize = size;
+            queenCount = 0;
+            queens = [];
+            hintCount = 0;
+            submitButton.style.display = 'none';
+            hintButton.style.display = 'block';
+            hintButton.disabled = false;
+            createBoard(size);
+            streamersDisplayed = false;  // Reset streamer flag when a new game starts
+        }
+
+        function createBoard(size) {
+            gameBoard.style.opacity = '0';
+            setTimeout(() => {
+                gameBoard.innerHTML = '';
+                gameBoard.style.gridTemplateColumns = `repeat(${size}, 50px)`;
+                gameBoard.style.gridTemplateRows = `repeat(${size}, 50px)`;
+
+                gameBoard.style.border = 'none';
+                gameBoard.style.margin = 'auto';
+
+                for (let row = 0; row < size; row++) {
+                    for (let col = 0; col < size; col++) {
+                        const cell = document.createElement('div');
+                        cell.classList.add('cell');
+                        cell.classList.add((row + col) % 2 === 0 ? 'white' : 'black');
+                        cell.dataset.row = row;
+                        cell.dataset.col = col;
+
+                        cell.addEventListener('click', () => placeQueen(cell));
+                        cell.addEventListener('dblclick', () => removeQueen(cell));
+
+                        gameBoard.appendChild(cell);
+                    }
+                }
+                gameBoard.style.opacity = '1';
+            }, 1000);
+        }
+
+        function placeQueen(cell) {
+            if (!cell.textContent && !cell.classList.contains('cross')) {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+
+                if (queenCount < boardSize) {
+                    if (isInvalidPlacement(row, col)) {
+                        alert('A queen is placed in a wrong position! Restarting the game.');
+                        startGame(boardSize);
+                    } else {
+                        cell.textContent = '♛';
+                        queenCount++;
+                        queens.push({ row, col });
+
+                        if (queenCount === boardSize) {
+                            submitButton.style.display = 'block';
+                            submitButton.disabled = false;
+                        }
+                    }
+                } else {
+                    alert('All queens are placed!');
+                }
+            }
+        }
+
+        function removeQueen(cell) {
+            if (cell.textContent === '♛') {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+
+                cell.textContent = '';
+                queenCount--;
+                queens = queens.filter(queen => !(queen.row === row && queen.col === col));
+
+                submitButton.style.display = 'none';
+            }
+        }
+
+        function isInvalidPlacement(row, col) {
+            for (const queen of queens) {
+                if (
+                    queen.row === row ||
+                    queen.col === col ||
+                    Math.abs(queen.row - row) === Math.abs(queen.col - col)
+                ) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function provideHint() {
+            if (hintCount < maxHints) {
+                let hint = queens[hintCount];
+                if (hint) {
+                    alert(`Hint: Try placing a queen at Row ${hint.row + 1}, Column ${hint.col + 1}`);
+                    hintCount++;
+                } else {
+                    alert('No hints available.');
+                }
+
+                if (hintCount === maxHints) {
+                    hintButton.disabled = true;
+                }
+            }
+        }
+
+        function submitGame() {
+            alert(`Level ${currentLevel} completed!`);
+            if (!streamersDisplayed) {
+                showPartyStreamers(); // Trigger the party streamers animation only once
+                streamersDisplayed = true; // Set the flag to true after displaying streamers
+            }
+
+            setTimeout(() => {
+                if (currentLevel === 1) {
+                    currentLevel = 2;
+                    startGame(6);
+                } else if (currentLevel === 2) {
+                    currentLevel = 3;
+                    startGame(8);
+                } else {
+                    alert('Congratulations! You completed all levels!');
+                }
+            }, 3000); // Wait for 3 seconds before moving to the next level
+        }
+
+        function showPartyStreamers() {
+            const streamerCount = 10; // Number of streamers
+            for (let i = 0; i < streamerCount; i++) {
+                const streamer = document.createElement('div');
+                streamer.classList.add('streamer');
+                
+                // Randomize the starting position of each streamer
+                const randomEdge = Math.floor(Math.random() * 4); // Randomly select top, left, right, or bottom
+                const randomPosition = Math.random() * 100; // Random position along the edge
+
+                if (randomEdge === 0) {
+                    // Top
+                    streamer.style.left = `${randomPosition}%`;
+                    streamer.style.top = `0%`;
+                    streamer.style.animationDirection = 'downwards';
+                } else if (randomEdge === 1) {
+                    // Left
+                    streamer.style.left = `0%`;
+                    streamer.style.top = `${randomPosition}%`;
+                    streamer.style.animationDirection = 'rightwards';
+                } else if (randomEdge === 2) {
+                    // Right
+                    streamer.style.left = `100%`;
+                    streamer.style.top = `${randomPosition}%`;
+                    streamer.style.animationDirection = 'leftwards';
+                } else {
+                    // Bottom
+                    streamer.style.left = `${randomPosition}%`;
+                    streamer.style.top = `100%`;
+                    streamer.style.animationDirection = 'upwards';
+                }
+
+                document.body.appendChild(streamer);
+            }
+        }
+    </script>
+</body>
+</html>
